@@ -3,48 +3,75 @@ import { mockPalworld } from "@/lib/mock/mockClients";
 import type { PalworldMetrics, PlayerSummary } from "@/types/server";
 
 type HttpMethod = "GET" | "POST";
+type PalworldRequestOptions = {
+  method?: HttpMethod;
+  body?: unknown;
+  timeoutMs?: number;
+  attempts?: number;
+  ignoreResponseBody?: boolean;
+};
+
+export class PalworldRequestTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Palworld REST API 요청 시간이 ${timeoutMs}ms를 초과했습니다.`);
+    this.name = "PalworldRequestTimeoutError";
+  }
+}
 
 function authHeader(): string {
   const config = getConfig();
   return `Basic ${Buffer.from(`${config.palworldAdminUsername}:${config.palworldAdminPassword}`).toString("base64")}`;
 }
 
-async function palworldRequest<T>(path: string, options: { method?: HttpMethod; body?: unknown } = {}): Promise<T> {
+async function palworldRequest<T>(path: string, options: PalworldRequestOptions = {}): Promise<T> {
   const config = getConfig();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4500);
   const url = `${config.palworldRestBaseUrl}/${path.replace(/^\//, "")}`;
+  const timeoutMs = options.timeoutMs ?? config.palworldStatusTimeoutMs;
+  const attempts = options.attempts ?? 1;
 
-  try {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const response = await fetch(url, {
-          method: options.method || "GET",
-          headers: {
-            Authorization: authHeader(),
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: options.body === undefined ? undefined : JSON.stringify(options.body),
-          cache: "no-store",
-          signal: controller.signal,
-        });
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-        if (!response.ok) {
-          throw new Error(`Palworld REST API 응답 오류: ${response.status}`);
-        }
-
-        if (response.status === 204) return undefined as T;
-        const text = await response.text();
-        return (text ? JSON.parse(text) : undefined) as T;
-      } catch (error) {
-        if (attempt === 1) throw error;
+    try {
+      const headers: Record<string, string> = {
+        Authorization: authHeader(),
+        Accept: "application/json",
+      };
+      if (options.body !== undefined) {
+        headers["Content-Type"] = "application/json";
       }
+
+      const response = await fetch(url, {
+        method: options.method || "GET",
+        headers,
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Palworld REST API 응답 오류: ${response.status}`);
+      }
+
+      if (options.ignoreResponseBody) {
+        void response.body?.cancel();
+        return undefined as T;
+      }
+
+      const text = await response.text();
+      return (text.trim() ? JSON.parse(text) : undefined) as T;
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new PalworldRequestTimeoutError(timeoutMs);
+      }
+      if (attempt === attempts - 1) throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-    throw new Error("Palworld REST API 요청에 실패했습니다.");
-  } finally {
-    clearTimeout(timeout);
   }
+
+  throw new Error("Palworld REST API 요청에 실패했습니다.");
 }
 
 function numberFrom(value: unknown): number | null {
@@ -65,16 +92,20 @@ function readFirstNumber(source: Record<string, unknown>, keys: string[], fallba
 }
 
 export async function getMetrics(): Promise<PalworldMetrics> {
-  if (getConfig().mock) return mockPalworld.getMetrics();
+  const config = getConfig();
+  if (config.mock) return mockPalworld.getMetrics();
 
-  const raw = await palworldRequest<Record<string, unknown>>("metrics");
+  const raw = await palworldRequest<Record<string, unknown>>("metrics", {
+    timeoutMs: config.palworldStatusTimeoutMs,
+  });
   const currentPlayers = readFirstNumber(raw, ["currentPlayers", "current_players", "currentplayernum"], 0) ?? 0;
-  const maxPlayers = readFirstNumber(raw, ["maxPlayers", "max_players", "server_player_max_num"], 0) ?? 0;
+  const maxPlayers =
+    readFirstNumber(raw, ["maxPlayers", "max_players", "maxplayernum", "server_player_max_num"], 0) ?? 0;
 
   return {
     currentPlayers,
     maxPlayers,
-    serverFps: readFirstNumber(raw, ["serverFps", "server_fps", "fps"], null),
+    serverFps: readFirstNumber(raw, ["serverFps", "server_fps", "serverfps", "fps"], null),
     uptime: readFirstNumber(raw, ["uptime", "upTime", "server_uptime"], null),
     raw,
   };
@@ -91,9 +122,12 @@ function sanitizePlayer(rawPlayer: Record<string, unknown>): PlayerSummary {
 }
 
 export async function getPlayers(): Promise<PlayerSummary[]> {
-  if (getConfig().mock) return mockPalworld.getPlayers();
+  const config = getConfig();
+  if (config.mock) return mockPalworld.getPlayers();
 
-  const raw = await palworldRequest<unknown>("players");
+  const raw = await palworldRequest<unknown>("players", {
+    timeoutMs: config.palworldPlayersTimeoutMs,
+  });
   const players = Array.isArray(raw)
     ? raw
     : Array.isArray((raw as { players?: unknown[] }).players)
@@ -106,8 +140,14 @@ export async function getPlayers(): Promise<PlayerSummary[]> {
 }
 
 export async function saveWorld(): Promise<void> {
-  if (getConfig().mock) return mockPalworld.saveWorld();
-  await palworldRequest("save", { method: "POST" });
+  const config = getConfig();
+  if (config.mock) return mockPalworld.saveWorld();
+  await palworldRequest("save", {
+    method: "POST",
+    timeoutMs: config.palworldSaveTimeoutMs,
+    attempts: 1,
+    ignoreResponseBody: true,
+  });
 }
 
 export async function shutdownServer({
@@ -117,13 +157,17 @@ export async function shutdownServer({
   waittime: number;
   message: string;
 }): Promise<void> {
-  if (getConfig().mock) return mockPalworld.shutdownServer();
+  const config = getConfig();
+  if (config.mock) return mockPalworld.shutdownServer();
   await palworldRequest("shutdown", {
     method: "POST",
     body: {
       waittime,
       message,
     },
+    timeoutMs: config.palworldShutdownTimeoutMs,
+    attempts: 1,
+    ignoreResponseBody: true,
   });
 }
 
@@ -132,5 +176,6 @@ export async function announce(message: string): Promise<void> {
   await palworldRequest("announce", {
     method: "POST",
     body: { message },
+    ignoreResponseBody: true,
   });
 }

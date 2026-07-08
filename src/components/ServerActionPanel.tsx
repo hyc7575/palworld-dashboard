@@ -18,8 +18,9 @@ export function ServerActionPanel({
   onRefresh: () => void;
 }) {
   const busy = loadingAction !== null;
+  const vmStatus = status?.vmStatus;
   const serverStatus = status?.serverStatus;
-  const transitioning = serverStatus === "STARTING_VM" || serverStatus === "BOOTING_SERVER" || serverStatus === "STOPPING";
+  const canStart = vmStatus === "TERMINATED";
   const online = serverStatus === "ONLINE";
 
   return (
@@ -29,7 +30,7 @@ export function ServerActionPanel({
       </div>
       <div className="panel-body">
         <div className="actions">
-          <button className="button-primary" disabled={busy || transitioning || online} onClick={onStart} type="button">
+          <button className="button-primary" disabled={busy || !canStart} onClick={onStart} type="button">
             {loadingAction === "start" ? "켜는 중" : "서버 켜기"}
           </button>
           <button disabled={busy || !online} onClick={onSave} type="button">
@@ -38,7 +39,7 @@ export function ServerActionPanel({
           <button disabled={busy || !online} onClick={onShutdown} type="button">
             {loadingAction === "shutdown" ? "종료 중" : "서버 종료"}
           </button>
-          <button disabled={busy} onClick={onRefresh} type="button">
+          <button onClick={onRefresh} type="button">
             상태 새로고침
           </button>
         </div>

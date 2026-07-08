@@ -16,7 +16,12 @@ export type AppConfig = {
   autostopSchedulerServiceAccount: string;
   autostopGraceMinutes: number;
   autostopEmptyMinutes: number;
+  palworldStatusTimeoutMs: number;
+  palworldPlayersTimeoutMs: number;
+  palworldSaveTimeoutMs: number;
+  palworldShutdownTimeoutMs: number;
   palworldShutdownWaitSeconds: number;
+  computeOperationTimeoutMs: number;
 };
 
 let cachedConfig: AppConfig | null = null;
@@ -50,7 +55,7 @@ export function getConfig(): AppConfig {
   const mock = readBoolean("CONTROL_PANEL_MOCK", process.env.NODE_ENV !== "production");
   cachedConfig = {
     mock,
-    controlPanelPassword: required("CONTROL_PANEL_PASSWORD", {
+    controlPanelPassword: required("WEB_CONTROL_PASSWORD", {
       mock,
       mockFallback: "palworld",
     }),
@@ -77,16 +82,21 @@ export function getConfig(): AppConfig {
     autostopOidcAudience: process.env.AUTOSTOP_OIDC_AUDIENCE || "",
     autostopSchedulerServiceAccount: process.env.AUTOSTOP_SCHEDULER_SERVICE_ACCOUNT || "",
     autostopGraceMinutes: readInteger("AUTOSTOP_GRACE_MINUTES", 20),
-    autostopEmptyMinutes: readInteger("AUTOSTOP_EMPTY_MINUTES", 30),
-    palworldShutdownWaitSeconds: readInteger("PALWORLD_SHUTDOWN_WAIT_SECONDS", 60),
+    autostopEmptyMinutes: readInteger("AUTOSTOP_EMPTY_MINUTES", 10),
+    palworldStatusTimeoutMs: readInteger("PALWORLD_STATUS_TIMEOUT_MS", 5000),
+    palworldPlayersTimeoutMs: readInteger("PALWORLD_PLAYERS_TIMEOUT_MS", 8000),
+    palworldSaveTimeoutMs: readInteger("PALWORLD_SAVE_TIMEOUT_MS", 60000),
+    palworldShutdownTimeoutMs: readInteger("PALWORLD_SHUTDOWN_TIMEOUT_MS", 60000),
+    palworldShutdownWaitSeconds: readInteger("PALWORLD_SHUTDOWN_WAIT_SECONDS", 120),
+    computeOperationTimeoutMs: readInteger("COMPUTE_OPERATION_TIMEOUT_MS", 180000),
   };
 
   if (!mock && !cachedConfig.autostopSecret && !cachedConfig.autostopOidcAudience) {
     throw new Error("AUTOSTOP_SECRET 또는 AUTOSTOP_OIDC_AUDIENCE 중 하나는 설정해야 합니다.");
   }
 
-  if (process.env.NODE_ENV === "production" && cachedConfig.sessionSecret.length < 32) {
-    throw new Error("SESSION_SECRET은 운영 환경에서 32자 이상이어야 합니다.");
+  if (process.env.NODE_ENV === "production" && cachedConfig.sessionSecret.length < 24) {
+    throw new Error("SESSION_SECRET은 운영 환경에서 24자 이상이어야 합니다.");
   }
 
   return cachedConfig;

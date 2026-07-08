@@ -23,7 +23,6 @@ export async function handleApi<T>(operation: string, fn: () => Promise<T>): Pro
     return ok(await fn());
   } catch (error) {
     console.error(`[${operation}]`, error);
-    const message = error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
-    return fail(500, message, operation);
+    return fail(500, "요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.", operation);
   }
 }

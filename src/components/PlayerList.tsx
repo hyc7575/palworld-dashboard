@@ -1,5 +1,10 @@
 import type { PlayerSummary } from "@/types/server";
 
+function formatPing(ping: number | null): string {
+  if (ping === null) return "-";
+  return `${Math.round(ping)}ms`;
+}
+
 export function PlayerList({ players }: { players: PlayerSummary[] }) {
   return (
     <section className="panel">
@@ -21,7 +26,7 @@ export function PlayerList({ players }: { players: PlayerSummary[] }) {
               <div className="player-row" key={`${player.name}-${player.level}-${player.ping}`}>
                 <strong>{player.name}</strong>
                 <span>{player.level ?? "-"}</span>
-                <span>{player.ping === null ? "-" : `${player.ping}ms`}</span>
+                <span>{formatPing(player.ping)}</span>
               </div>
             ))}
           </div>

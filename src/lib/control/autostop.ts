@@ -62,24 +62,25 @@ export async function runAutostopCheck(): Promise<{ action: string; message: str
     return { action: "noop", message: "Palworld REST API가 아직 준비되지 않았습니다." };
   }
 
-  if (metrics.uptime !== null && metrics.uptime < config.autostopGraceMinutes * 60) {
-    return { action: "noop", message: "서버 시작 후 보호 시간입니다." };
-  }
-
   if (metrics.currentPlayers > 0) {
     if (state.emptySince) await updateServerControlState({ emptySince: null });
     return { action: "reset-empty", message: "접속자가 있어 자동 종료 타이머를 초기화했습니다." };
   }
 
   const now = Date.now();
-  if (!state.emptySince) {
+  let emptySince = state.emptySince;
+  if (!emptySince) {
+    emptySince = new Date(now).toISOString();
     await updateServerControlState({
-      emptySince: new Date(now).toISOString(),
+      emptySince,
     });
-    return { action: "mark-empty", message: "0명 상태를 기록했습니다." };
   }
 
-  const emptySinceMs = new Date(state.emptySince).getTime();
+  if (metrics.uptime !== null && metrics.uptime < config.autostopGraceMinutes * 60) {
+    return { action: "mark-empty", message: "0명 상태를 기록했지만 서버 시작 후 보호 시간입니다." };
+  }
+
+  const emptySinceMs = new Date(emptySince).getTime();
   const emptyForMs = Number.isFinite(emptySinceMs) ? now - emptySinceMs : 0;
   if (emptyForMs < config.autostopEmptyMinutes * 60 * 1000) {
     return { action: "wait", message: "0명 상태가 종료 기준 시간보다 짧습니다." };

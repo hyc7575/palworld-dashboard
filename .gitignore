@@ -43,3 +43,9 @@ credentials*.json
 *.pem
 *.p12
 *.key
+
+
+# custom 
+palworld.ini
+*.md
+deploy.sh

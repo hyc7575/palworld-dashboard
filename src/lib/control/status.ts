@@ -12,11 +12,20 @@ function serverStatusFromVm(vmStatus: VmStatus): PalworldServerStatus {
   return "UNKNOWN";
 }
 
-function remainingSeconds(emptySince: string | null, emptyMinutes: number): number | null {
+function remainingSeconds(
+  emptySince: string | null,
+  emptyMinutes: number,
+  lastStartedAt: string | null,
+  graceMinutes: number,
+): number | null {
   if (!emptySince) return null;
   const started = new Date(emptySince).getTime();
   if (!Number.isFinite(started)) return null;
-  const shutdownAt = started + emptyMinutes * 60 * 1000;
+  const emptyShutdownAt = started + emptyMinutes * 60 * 1000;
+  const lastStartedMs = lastStartedAt ? new Date(lastStartedAt).getTime() : null;
+  const graceShutdownAt =
+    lastStartedMs !== null && Number.isFinite(lastStartedMs) ? lastStartedMs + graceMinutes * 60 * 1000 : 0;
+  const shutdownAt = Math.max(emptyShutdownAt, graceShutdownAt);
   return Math.max(0, Math.ceil((shutdownAt - Date.now()) / 1000));
 }
 
@@ -39,7 +48,12 @@ export async function getCurrentStatus(): Promise<ServerStatusResponse> {
         emptySince: state.emptySince,
         shutdownAfterMinutes: config.autostopEmptyMinutes,
         graceMinutes: config.autostopGraceMinutes,
-        remainingSeconds: remainingSeconds(state.emptySince, config.autostopEmptyMinutes),
+        remainingSeconds: remainingSeconds(
+          state.emptySince,
+          config.autostopEmptyMinutes,
+          state.lastStartedAt,
+          config.autostopGraceMinutes,
+        ),
       },
       lastStartedAt: state.lastStartedAt,
       lastStoppedAt: state.lastStoppedAt,
@@ -64,7 +78,12 @@ export async function getCurrentStatus(): Promise<ServerStatusResponse> {
         emptySince: state.emptySince,
         shutdownAfterMinutes: config.autostopEmptyMinutes,
         graceMinutes: config.autostopGraceMinutes,
-        remainingSeconds: remainingSeconds(state.emptySince, config.autostopEmptyMinutes),
+        remainingSeconds: remainingSeconds(
+          state.emptySince,
+          config.autostopEmptyMinutes,
+          state.lastStartedAt,
+          config.autostopGraceMinutes,
+        ),
       },
       lastStartedAt: state.lastStartedAt,
       lastStoppedAt: state.lastStoppedAt,
@@ -87,7 +106,12 @@ export async function getCurrentStatus(): Promise<ServerStatusResponse> {
         emptySince: state.emptySince,
         shutdownAfterMinutes: config.autostopEmptyMinutes,
         graceMinutes: config.autostopGraceMinutes,
-        remainingSeconds: remainingSeconds(state.emptySince, config.autostopEmptyMinutes),
+        remainingSeconds: remainingSeconds(
+          state.emptySince,
+          config.autostopEmptyMinutes,
+          state.lastStartedAt,
+          config.autostopGraceMinutes,
+        ),
       },
       lastStartedAt: state.lastStartedAt,
       lastStoppedAt: state.lastStoppedAt,

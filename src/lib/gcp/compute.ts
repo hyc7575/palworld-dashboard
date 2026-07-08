@@ -31,11 +31,16 @@ function computeBaseUrl(): string {
   )}/zones/${encodeURIComponent(config.gcpZone)}/instances/${encodeURIComponent(config.gcpInstanceName)}`;
 }
 
-async function requestCompute<T>(url: string, method: "GET" | "POST" = "GET"): Promise<T> {
+async function requestCompute<T>(
+  url: string,
+  method: "GET" | "POST" = "GET",
+  timeoutMs?: number,
+): Promise<T> {
   const client = await getAuthClient().getClient();
   const response = await client.request<T>({
     url,
     method,
+    timeout: timeoutMs,
   });
   return response.data;
 }
@@ -69,13 +74,15 @@ export async function getVmStatus(): Promise<VmSummary> {
 }
 
 export async function startVm(): Promise<void> {
-  if (getConfig().mock) return mockCompute.startVm();
-  await requestCompute(`${computeBaseUrl()}/start`, "POST");
+  const config = getConfig();
+  if (config.mock) return mockCompute.startVm();
+  await requestCompute(`${computeBaseUrl()}/start`, "POST", config.computeOperationTimeoutMs);
 }
 
 export async function stopVm(): Promise<void> {
-  if (getConfig().mock) return mockCompute.stopVm();
-  await requestCompute(`${computeBaseUrl()}/stop`, "POST");
+  const config = getConfig();
+  if (config.mock) return mockCompute.stopVm();
+  await requestCompute(`${computeBaseUrl()}/stop`, "POST", config.computeOperationTimeoutMs);
 }
 
 export async function getVmExternalIp(): Promise<string | null> {

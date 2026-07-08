@@ -32,7 +32,7 @@ export function AutoStopStatus({
             : "접속자가 없을 때 종료 타이머를 시작합니다."}
         </p>
         <p className="muted">
-          보호 시간 {autoStop?.graceMinutes ?? 20}분, 0명 기준 {autoStop?.shutdownAfterMinutes ?? 30}분
+          보호 시간 {autoStop?.graceMinutes ?? 20}분, 0명 기준 {autoStop?.shutdownAfterMinutes ?? 10}분
         </p>
         <button disabled={loading || !status} onClick={() => onToggle(!enabled)} type="button">
           {loading ? "변경 중" : enabled ? "자동 종료 끄기" : "자동 종료 켜기"}

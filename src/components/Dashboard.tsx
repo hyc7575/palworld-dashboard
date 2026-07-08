@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AutoStopStatus } from "@/components/AutoStopStatus";
 import { DangerZone } from "@/components/DangerZone";
 import { PlayerList } from "@/components/PlayerList";
@@ -20,12 +20,38 @@ async function readApi<T>(url: string, init?: RequestInit): Promise<T> {
   return payload.data;
 }
 
+type PlayersApiResponse =
+  | ApiResponse<PlayerSummary[]>
+  | {
+      ok: false;
+      players: PlayerSummary[];
+      message: string;
+    };
+
+async function readPlayersApi(): Promise<PlayerSummary[]> {
+  const response = await fetch("/api/players", { cache: "no-store" });
+  const payload = (await response.json()) as PlayersApiResponse;
+
+  if (payload.ok) return payload.data;
+  if ("players" in payload) return payload.players;
+  throw new Error(payload.error.message);
+}
+
+function userMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "요청을 처리하지 못했습니다.";
+  if (/AbortError|TimeoutError|operation was aborted|fetch failed|Failed to fetch/i.test(`${error.name} ${error.message}`)) {
+    return "서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.";
+  }
+  return error.message;
+}
+
 export function Dashboard() {
   const [status, setStatus] = useState<ServerStatusResponse | null>(null);
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<ActionName | null>(null);
+  const actionInFlight = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -33,14 +59,14 @@ export function Dashboard() {
       setStatus(nextStatus);
       setError(null);
 
-      if (nextStatus.vmStatus === "RUNNING") {
-        const nextPlayers = await readApi<PlayerSummary[]>("/api/players");
+      if (nextStatus.serverStatus === "ONLINE") {
+        const nextPlayers = await readPlayersApi();
         setPlayers(nextPlayers);
       } else {
         setPlayers([]);
       }
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "상태를 불러오지 못했습니다.");
+      setError(userMessage(nextError));
     }
   }, []);
 
@@ -68,6 +94,8 @@ export function Dashboard() {
   }, [pollingMs, refresh]);
 
   async function runAction(action: ActionName, fn: () => Promise<unknown>, success: string) {
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
     setLoadingAction(action);
     setError(null);
     setNotice(null);
@@ -76,8 +104,9 @@ export function Dashboard() {
       setNotice(success);
       await refresh();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "요청을 처리하지 못했습니다.");
+      setError(userMessage(nextError));
     } finally {
+      actionInFlight.current = false;
       setLoadingAction(null);
     }
   }
@@ -92,7 +121,7 @@ export function Dashboard() {
       <header className="topbar">
         <div>
           <h1>Palworld 서버 제어판</h1>
-          <p>친구들이 들어오기 쉽게 켜고, 안전하게 저장하고, 조용할 때 자동으로 종료합니다.</p>
+          {/* <p>친구들이 들어오기 쉽게 켜고, 안전하게 저장하고, 조용할 때 자동으로 종료합니다.</p> */}
         </div>
         <button className="button-subtle" onClick={logout} type="button">
           로그아웃
@@ -155,6 +184,7 @@ export function Dashboard() {
                 "강제 VM 중지를 요청했습니다.",
               )
             }
+            status={status}
           />
         </div>
       </div>
