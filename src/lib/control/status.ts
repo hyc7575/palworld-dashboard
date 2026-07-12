@@ -2,6 +2,7 @@ import { getConfig } from "@/lib/config/env";
 import { getVmStatus } from "@/lib/gcp/compute";
 import { getMetrics } from "@/lib/palworld/client";
 import { getServerControlState } from "@/lib/state/serverState";
+import { getProfileForMachineType } from "@/lib/control/profiles";
 import type { PalworldServerStatus, ServerStatusResponse, VmStatus } from "@/types/server";
 
 function serverStatusFromVm(vmStatus: VmStatus): PalworldServerStatus {
@@ -33,6 +34,11 @@ export async function getCurrentStatus(): Promise<ServerStatusResponse> {
   const config = getConfig();
   const [vm, state] = await Promise.all([getVmStatus(), getServerControlState()]);
   const connectAddress = vm.externalIp ? `${vm.externalIp}:8211` : null;
+  const currentProfile = getProfileForMachineType(vm.machineType);
+  const machineProfiles = {
+    low: config.palworldMachineTypeLow,
+    normal: config.palworldMachineTypeNormal,
+  };
 
   if (vm.status !== "RUNNING") {
     return {
@@ -59,6 +65,9 @@ export async function getCurrentStatus(): Promise<ServerStatusResponse> {
       lastStoppedAt: state.lastStoppedAt,
       lastActionBy: state.lastActionBy,
       lastActionType: state.lastActionType,
+      currentProfile,
+      currentMachineType: vm.machineType,
+      machineProfiles,
       message: vm.status === "TERMINATED" ? "서버가 꺼져 있습니다." : "VM 상태가 전환되는 중입니다.",
     };
   }
@@ -89,6 +98,9 @@ export async function getCurrentStatus(): Promise<ServerStatusResponse> {
       lastStoppedAt: state.lastStoppedAt,
       lastActionBy: state.lastActionBy,
       lastActionType: state.lastActionType,
+      currentProfile,
+      currentMachineType: vm.machineType,
+      machineProfiles,
       message: "접속 가능합니다.",
     };
   } catch (error) {
@@ -117,6 +129,9 @@ export async function getCurrentStatus(): Promise<ServerStatusResponse> {
       lastStoppedAt: state.lastStoppedAt,
       lastActionBy: state.lastActionBy,
       lastActionType: state.lastActionType,
+      currentProfile,
+      currentMachineType: vm.machineType,
+      machineProfiles,
       message: "VM은 켜졌지만 Palworld 서버가 아직 준비되지 않았습니다.",
     };
   }

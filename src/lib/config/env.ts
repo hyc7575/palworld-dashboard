@@ -5,6 +5,8 @@ export type AppConfig = {
   gcpProjectId: string;
   gcpZone: string;
   gcpInstanceName: string;
+  palworldMachineTypeLow: string;
+  palworldMachineTypeNormal: string;
   palworldRestBaseUrl: string;
   palworldAdminUsername: string;
   palworldAdminPassword: string;
@@ -22,6 +24,8 @@ export type AppConfig = {
   palworldShutdownTimeoutMs: number;
   palworldShutdownWaitSeconds: number;
   computeOperationTimeoutMs: number;
+  computeOperationPollIntervalMs: number;
+  controlOperationLockTimeoutMs: number;
 };
 
 let cachedConfig: AppConfig | null = null;
@@ -66,6 +70,8 @@ export function getConfig(): AppConfig {
     gcpProjectId: required("GCP_PROJECT_ID", { mock, mockFallback: "mock-project" }),
     gcpZone: required("GCP_ZONE", { mock, mockFallback: "asia-northeast3-a" }),
     gcpInstanceName: required("GCP_INSTANCE_NAME", { mock, mockFallback: "palworld-server" }),
+    palworldMachineTypeLow: process.env.PALWORLD_MACHINE_TYPE_LOW || "e2-highmem-2",
+    palworldMachineTypeNormal: process.env.PALWORLD_MACHINE_TYPE_NORMAL || "e2-highmem-4",
     palworldRestBaseUrl: required("PALWORLD_REST_BASE_URL", {
       mock,
       mockFallback: "http://127.0.0.1:8212/v1/api",
@@ -89,6 +95,8 @@ export function getConfig(): AppConfig {
     palworldShutdownTimeoutMs: readInteger("PALWORLD_SHUTDOWN_TIMEOUT_MS", 60000),
     palworldShutdownWaitSeconds: readInteger("PALWORLD_SHUTDOWN_WAIT_SECONDS", 120),
     computeOperationTimeoutMs: readInteger("COMPUTE_OPERATION_TIMEOUT_MS", 180000),
+    computeOperationPollIntervalMs: readInteger("COMPUTE_OPERATION_POLL_INTERVAL_MS", 2000),
+    controlOperationLockTimeoutMs: readInteger("CONTROL_OPERATION_LOCK_TIMEOUT_MS", 600000),
   };
 
   if (!mock && !cachedConfig.autostopSecret && !cachedConfig.autostopOidcAudience) {

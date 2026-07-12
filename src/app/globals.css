@@ -223,6 +223,69 @@ input:focus {
   gap: 10px;
 }
 
+.profile-actions {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfcfa;
+}
+
+.profile-card h3,
+.profile-card p {
+  margin: 0;
+}
+
+.profile-card .muted {
+  margin-top: 4px;
+}
+
+.profile-machine-type {
+  margin-top: 5px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(23, 32, 26, 0.48);
+}
+
+.modal {
+  width: min(460px, 100%);
+  border-radius: 10px;
+  padding: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.modal h2,
+.modal p {
+  margin-top: 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 .player-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 86px 86px;

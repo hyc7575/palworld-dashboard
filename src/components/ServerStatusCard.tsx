@@ -43,8 +43,10 @@ export function ServerStatusCard({
             </span>
           </div>
           <div className="metric">
-            <span className="metric-label">접속 주소</span>
-            <span className="metric-value">{status?.connectAddress || "-"}</span>
+            <span className="metric-label">서버 사양</span>
+            <span className="metric-value">
+              {status?.currentProfile === "low" ? "저사양" : status?.currentProfile === "normal" ? "일반" : "-"}
+            </span>
           </div>
           <div className="metric">
             <span className="metric-label">접속 인원</span>
@@ -57,6 +59,10 @@ export function ServerStatusCard({
           <div className="metric">
             <span className="metric-label">서버 FPS</span>
             <span className="metric-value">{status?.serverFps ?? "-"}</span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">접속 주소</span>
+            <span className="metric-value">{status?.connectAddress || "-"}</span>
           </div>
           <div className="metric">
             <span className="metric-label">업타임</span>

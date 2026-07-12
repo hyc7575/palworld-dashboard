@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { getConfig } from "@/lib/config/env";
 import { getVmStatus, stopVm } from "@/lib/gcp/compute";
 import { getMetrics, saveWorld, shutdownServer } from "@/lib/palworld/client";
-import { getServerControlState, updateServerControlState } from "@/lib/state/serverState";
+import { getServerControlState, updateServerControlState, withServerControlLock } from "@/lib/state/serverState";
 
 let oidcClient: OAuth2Client | null = null;
 
@@ -42,6 +42,10 @@ export async function verifyAutostopRequest(request: NextRequest): Promise<boole
 }
 
 export async function runAutostopCheck(): Promise<{ action: string; message: string }> {
+  return withServerControlLock("autostop", runAutostopCheckUnlocked);
+}
+
+async function runAutostopCheckUnlocked(): Promise<{ action: string; message: string }> {
   const config = getConfig();
   const state = await getServerControlState();
   if (!state.autoStopEnabled) {

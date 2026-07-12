@@ -16,7 +16,18 @@ export type PalworldServerStatus =
   | "STOPPING"
   | "UNKNOWN";
 
-export type LastActionType = "start" | "shutdown" | "force-stop" | "autostop" | null;
+export type MachineProfile = "low" | "normal";
+
+export type LastActionType =
+  | "start"
+  | "start-low"
+  | "start-normal"
+  | "switch-low"
+  | "switch-normal"
+  | "shutdown"
+  | "force-stop"
+  | "autostop"
+  | null;
 
 export type ServerControlState = {
   autoStopEnabled: boolean;
@@ -25,6 +36,10 @@ export type ServerControlState = {
   lastStoppedAt: string | null;
   lastActionBy: string | null;
   lastActionType: LastActionType;
+  operationInProgress: boolean;
+  operationType: string | null;
+  operationStartedAt: string | null;
+  operationId: string | null;
 };
 
 export type PalworldMetrics = {
@@ -45,6 +60,7 @@ export type VmSummary = {
   status: VmStatus;
   externalIp: string | null;
   internalIp: string | null;
+  machineType: string | null;
 };
 
 export type AutoStopSummary = {
@@ -68,12 +84,19 @@ export type ServerStatusResponse = {
   lastStoppedAt: string | null;
   lastActionBy: string | null;
   lastActionType: LastActionType;
+  currentProfile: MachineProfile | null;
+  currentMachineType: string | null;
+  machineProfiles: {
+    low: string;
+    normal: string;
+  };
   message: string | null;
 };
 
 export type ApiError = {
   message: string;
   code?: string;
+  details?: Record<string, unknown>;
 };
 
 export type ApiResponse<T> =

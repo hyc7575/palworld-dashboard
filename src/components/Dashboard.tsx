@@ -6,9 +6,9 @@ import { DangerZone } from "@/components/DangerZone";
 import { PlayerList } from "@/components/PlayerList";
 import { ServerActionPanel } from "@/components/ServerActionPanel";
 import { ServerStatusCard } from "@/components/ServerStatusCard";
-import type { ApiResponse, PlayerSummary, ServerStatusResponse } from "@/types/server";
+import type { ApiResponse, MachineProfile, PlayerSummary, ServerStatusResponse } from "@/types/server";
 
-type ActionName = "start" | "save" | "shutdown" | "force-stop" | "autostop";
+type ActionName = "profile" | "save" | "shutdown" | "force-stop" | "autostop";
 
 async function readApi<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -51,6 +51,7 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<ActionName | null>(null);
+  const [confirmProfile, setConfirmProfile] = useState<MachineProfile | null>(null);
   const actionInFlight = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -116,6 +117,27 @@ export function Dashboard() {
     window.location.href = "/login";
   }
 
+  function selectProfile(profile: MachineProfile) {
+    if (status?.vmStatus === "RUNNING") {
+      setConfirmProfile(profile);
+      return;
+    }
+    void runProfile(profile);
+  }
+
+  async function runProfile(profile: MachineProfile) {
+    await runAction(
+      "profile",
+      () =>
+        readApi("/api/start-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile }),
+        }),
+      status?.vmStatus === "RUNNING" ? "프로필 변경을 위해 VM을 재시작합니다." : "선택한 프로필로 VM을 시작합니다.",
+    );
+  }
+
   return (
     <main className="page">
       <header className="topbar">
@@ -154,9 +176,7 @@ export function Dashboard() {
                 "서버 종료 요청을 보냈습니다.",
               )
             }
-            onStart={() =>
-              runAction("start", () => readApi("/api/start", { method: "POST" }), "VM 켜는 중입니다.")
-            }
+            onSelectProfile={selectProfile}
             status={status}
           />
           <AutoStopStatus
@@ -188,6 +208,34 @@ export function Dashboard() {
           />
         </div>
       </div>
+      {confirmProfile ? (
+        <div className="modal-backdrop" role="presentation">
+          <section aria-labelledby="profile-confirm-title" aria-modal="true" className="modal" role="dialog">
+            <h2 id="profile-confirm-title">서버를 재시작할까요?</h2>
+            <p>
+              프로필을 {confirmProfile === "low" ? "저사양" : "일반"}으로 변경하면 Palworld 서버를 저장하고 정상 종료한 뒤
+              VM을 재시작합니다. <br/>
+              접속자가 있으면 변경할 수 없으니 다 내쫓거나 서버종료 버튼을 먼저 이용해주세요.
+            </p>
+            <div className="modal-actions">
+              <button onClick={() => setConfirmProfile(null)} type="button">
+                취소
+              </button>
+              <button
+                className="button-primary"
+                onClick={() => {
+                  const profile = confirmProfile;
+                  setConfirmProfile(null);
+                  void runProfile(profile);
+                }}
+                type="button"
+              >
+                재시작하고 변경
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

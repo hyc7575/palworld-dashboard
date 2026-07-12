@@ -5,6 +5,8 @@ type MockStore = {
   state: ServerControlState;
   players: PlayerSummary[];
   startedAt: number;
+  operations: string[];
+  failNextOperation: string | null;
 };
 
 const globalForMock = globalThis as typeof globalThis & {
@@ -20,6 +22,10 @@ function initialState(): ServerControlState {
     lastStoppedAt: null,
     lastActionBy: "mock",
     lastActionType: "start",
+    operationInProgress: false,
+    operationType: null,
+    operationStartedAt: null,
+    operationId: null,
   };
 }
 
@@ -30,6 +36,7 @@ export function getMockStore(): MockStore {
         status: "RUNNING",
         externalIp: "203.0.113.24",
         internalIp: "10.0.0.24",
+        machineType: "e2-highmem-4",
       },
       state: initialState(),
       players: [
@@ -37,9 +44,20 @@ export function getMockStore(): MockStore {
         { name: "초코팜", level: 31, ping: 37 },
       ],
       startedAt: Date.now() - 1000 * 60 * 48,
+      operations: [],
+      failNextOperation: null,
     };
   }
   return globalForMock.__palworldMockStore;
+}
+
+function recordOperation(name: string): void {
+  const store = getMockStore();
+  store.operations.push(name);
+  if (store.failNextOperation === name) {
+    store.failNextOperation = null;
+    throw new Error(`mock ${name} failure`);
+  }
 }
 
 export const mockCompute = {
@@ -47,14 +65,20 @@ export const mockCompute = {
     return getMockStore().vm;
   },
   async startVm(): Promise<void> {
+    recordOperation("start");
     const store = getMockStore();
     store.vm.status = "RUNNING";
     store.startedAt = Date.now();
   },
   async stopVm(): Promise<void> {
+    recordOperation("stop");
     const store = getMockStore();
     store.vm.status = "TERMINATED";
     store.players = [];
+  },
+  async setMachineType(machineType: string): Promise<void> {
+    recordOperation("set-machine-type");
+    getMockStore().vm.machineType = machineType;
   },
   async getVmExternalIp(): Promise<string | null> {
     return getMockStore().vm.externalIp;
@@ -79,9 +103,11 @@ export const mockPalworld = {
     return getMockStore().players;
   },
   async saveWorld(): Promise<void> {
+    recordOperation("save");
     return;
   },
   async shutdownServer(): Promise<void> {
+    recordOperation("shutdown");
     return;
   },
   async announce(): Promise<void> {
