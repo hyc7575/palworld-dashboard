@@ -1,10 +1,29 @@
 # Palworld Control Dashboard
 
+## 필요한 GCP 서비스
+
+- **Cloud Run**: Next.js 제어 대시보드를 실행한다. 로그인 요청을 처리하고, VM 상태 조회·시작·종료와 Palworld REST API 호출을 중계한다.
+- **Compute Engine**: Palworld Docker Compose 서버가 실행되는 VM을 제공한다. Cloud Run 서비스 계정에는 이 VM을 조회·시작·중지할 권한이 필요하다.
+- **Firestore**: 자동 종료 설정, 서버가 비어 있던 시각, 마지막 제어 이력을 저장한다.
+- **Cloud Scheduler**: 일정 주기로 `POST /api/autostop`을 호출해 접속자가 없는 서버를 자동 종료한다.
+- **Secret Manager**: 대시보드 로그인 비밀번호, 세션 서명 키, Palworld 관리자 비밀번호, Scheduler 인증 secret을 안전하게 보관한다.
+- **VPC (default network)**: Cloud Run이 VM의 private IP에 있는 Palworld REST API에 접근할 수 있게 한다. Cloud Run의 VPC egress 설정이 필요하다.
+
 ## 아키텍처
 
-대시보드는 Cloud Run, Palworld 서버는 Compute Engine VM에서 실행된다.
+사용자는 제어 화면에서 서버를 켜고, 저장하고, 종료할 수 있다. 사람이 없을 때는 자동 종료 기능이 서버를 안전하게 끈다.
 
-Cloud Run에서 VM을 켜고 끄거나 서버 저장·종료를 요청한다. 자동종료 체크는 Cloud Scheduler가 호출하고 상태는 Firestore에 저장한다.
+아래 그림은 이 기능들이 어떻게 연결되는지 사용자 관점에서 보여준다. 괄호 안은 실제 사용 중인 GCP 서비스다.
+
+```mermaid
+flowchart TB
+    User["👤 사용자"] -->|"서버 켜기 · 저장 · 종료"| Dashboard["🖥️ 서버 제어 화면<br/>(Cloud Run)"]
+    Scheduler["⏰ 자동 종료 확인<br/>(Cloud Scheduler)"] -->|"주기적으로 상태 확인"| Dashboard
+
+    Dashboard -->|"상태 확인 · 서버 제어"| GameServer["🎮 Palworld 게임 서버<br/>(Compute Engine VM)"]
+    Dashboard <-->|"자동 종료 설정 · 운영 기록"| Records["🗂️ 설정과 기록<br/>(Firestore)"]
+    Dashboard -->|"로그인 · 관리자 비밀번호 조회"| Secrets["🔒 비밀 정보<br/>(Secret Manager)"]
+```
 
 ## 배포 전 준비
 
