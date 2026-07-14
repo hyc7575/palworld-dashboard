@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AutoStopStatus } from "@/components/AutoStopStatus";
+import { AnnouncementPanel } from "@/components/AnnouncementPanel";
 import { DangerZone } from "@/components/DangerZone";
 import { PlayerList } from "@/components/PlayerList";
 import { ServerActionPanel } from "@/components/ServerActionPanel";
 import { ServerStatusCard } from "@/components/ServerStatusCard";
 import type { ApiResponse, MachineProfile, PlayerSummary, ServerStatusResponse } from "@/types/server";
 
-type ActionName = "profile" | "save" | "shutdown" | "force-stop" | "autostop";
+type ActionName = "profile" | "save" | "shutdown" | "force-stop" | "autostop" | "announce";
 
 async function readApi<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -94,8 +95,8 @@ export function Dashboard() {
     return () => window.clearInterval(id);
   }, [pollingMs, refresh]);
 
-  async function runAction(action: ActionName, fn: () => Promise<unknown>, success: string) {
-    if (actionInFlight.current) return;
+  async function runAction(action: ActionName, fn: () => Promise<unknown>, success: string): Promise<boolean> {
+    if (actionInFlight.current) return false;
     actionInFlight.current = true;
     setLoadingAction(action);
     setError(null);
@@ -104,8 +105,10 @@ export function Dashboard() {
       await fn();
       setNotice(success);
       await refresh();
+      return true;
     } catch (nextError) {
       setError(userMessage(nextError));
+      return false;
     } finally {
       actionInFlight.current = false;
       setLoadingAction(null);
@@ -178,6 +181,22 @@ export function Dashboard() {
             }
             onSelectProfile={selectProfile}
             status={status}
+          />
+          <AnnouncementPanel
+            loading={loadingAction === "announce"}
+            onSend={(message) =>
+              runAction(
+                "announce",
+                () =>
+                  readApi("/api/server/announce", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message }),
+                  }),
+                "공지를 전송했습니다.",
+              )
+            }
+            online={status?.serverStatus === "ONLINE"}
           />
           <AutoStopStatus
             loading={loadingAction === "autostop"}

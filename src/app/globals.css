@@ -38,7 +38,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -96,7 +97,23 @@ input {
   color: var(--text);
 }
 
+textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
 input:focus {
+  border-color: var(--accent);
+  outline: 3px solid rgba(20, 108, 92, 0.16);
+}
+
+textarea:focus {
   border-color: var(--accent);
   outline: 3px solid rgba(20, 108, 92, 0.16);
 }
@@ -131,11 +148,13 @@ input:focus {
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  align-items: start;
   gap: 16px;
 }
 
 .stack {
   display: grid;
+  align-content: start;
   gap: 16px;
 }
 
@@ -339,6 +358,17 @@ input:focus {
   display: grid;
   gap: 12px;
   margin-top: 20px;
+}
+
+.announcement-form {
+  margin-top: 0;
+}
+
+.announcement-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .danger-copy {

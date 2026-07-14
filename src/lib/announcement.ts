@@ -1,0 +1,1 @@
+export const ANNOUNCEMENT_MAX_LENGTH = 200;

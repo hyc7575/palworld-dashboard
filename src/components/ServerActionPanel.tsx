@@ -1,6 +1,6 @@
 import type { MachineProfile, ServerStatusResponse } from "@/types/server";
 
-type ActionName = "profile" | "save" | "shutdown" | "force-stop" | "autostop";
+type ActionName = "profile" | "save" | "shutdown" | "force-stop" | "autostop" | "announce";
 
 export function ServerActionPanel({
   status,

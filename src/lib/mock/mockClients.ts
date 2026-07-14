@@ -111,6 +111,7 @@ export const mockPalworld = {
     return;
   },
   async announce(): Promise<void> {
+    recordOperation("announce");
     return;
   },
 };
