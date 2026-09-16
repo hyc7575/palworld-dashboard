@@ -4,6 +4,10 @@ Cloud Run에서 Palworld VM을 제어하는 대시보드입니다. VM 시작·�
 
 이 문서는 완전한 설치 튜토리얼이 아니라, 직접 GCP 리소스를 구성할 때 필요한 구조와 설정 항목을 정리한 문서입니다.
 
+## 예시 화면
+
+![Palworld Control Dashboard](public/Images/palworld-dashboard.png)
+
 ## 아키텍처
 
 ```mermaid
